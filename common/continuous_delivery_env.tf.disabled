@@ -1,0 +1,19 @@
+module "continuous-delivery_env" {
+  source                = "git::ssh://git@bitbucket.org/beetobit/do-t-modules.git//cd-common"
+  # codepipeline_role_arn = "${data.terraform_remote_state.common.codepipeline_role_arn}"
+  # codedeploy_role_arn   = "${data.terraform_remote_state.common.codedeploy_role_arn}"
+  # codedeploy_sns_arn    = "${data.terraform_remote_state.common.codedeploy_sns_arn}"
+  # asg_id                = "${module.asg.asg_id}"
+  environment           = "${var.environment}"
+  project               = "${var.project}"
+  role                  = "${var.role}"
+  project_full_name     = "${var.project_full_name}"
+  # filename              = "last-release.tar.gz"
+  # ec2_tag_filter = [
+  #   {
+  #     key                 = "Name"
+  #     type  = "KEY_AND_VALUE"
+  #     value               = "${var.environment}-${var.project}-${var.role}-ec2"
+  #   },
+  # ]
+}

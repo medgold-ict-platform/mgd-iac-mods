@@ -1,0 +1,122 @@
+
+resource "aws_iam_role" "win_instance_role" {
+  name = "${var.environment}-${var.project}-win-instance-role"
+  assume_role_policy = "${data.template_file.win_instance_trust_policy.rendered}"
+}
+
+data "template_file" "win_instance_trust_policy" {
+  template = "${file("${var.win_instance_trust_policy}")}"
+}
+
+resource "aws_iam_policy" "win-instance-policy" {
+  name        = "win-instance-policy"
+  description = "Ec2 policy"
+  policy = "${data.template_file.win_instance_policy.rendered}"
+}
+
+data "template_file" "win_instance_policy" {
+  template = "${file("${var.win_instance_policy}")}"
+}
+
+resource "aws_iam_role_policy_attachment" "attach-to" {
+  role       = "${aws_iam_role.win_instance_role.name}"
+  policy_arn = "${aws_iam_policy.win-instance-policy.arn}"
+}
+
+resource "aws_iam_instance_profile" "iProfile" {
+  name = "${var.environment}-${var.project}-iProfile"
+  role = "${aws_iam_role.win_instance_role.name}"
+}
+
+resource "aws_security_group" "allow_tls" {
+  name        = "${var.environment}-${var.project}-${var.pbdmworkflow}-sg"
+  description = "Allow Ec2 pbdm worker inbound traffic"
+  vpc_id      = "${var.vpc_id}"
+
+   egress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    cidr_blocks     = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group_rule" "allow_rdaccess" {
+  type            = "ingress"
+  from_port       = 3389
+  to_port         = 3389
+  protocol        = "tcp"
+  description     = "Allow access from remote desktop"
+  # Opening to 0.0.0.0/0 can lead to security vulnerabilities.
+  security_group_id = "${aws_security_group.allow_tls.id}"
+  cidr_blocks     = [""]
+}
+
+
+module "asg" {
+  source = "terraform-aws-modules/autoscaling/aws"
+
+  name = "${var.environment}-${var.project}-${var.pbdmworkflow}-worker"
+
+  # Launch configuration
+  lc_name = "${var.environment}-${var.project}-${var.pbdmworkflow}-worker"
+
+  image_id        = "ami-0641fb28ff103057c"
+  #image_id        = "ami-09226bf1895277020"
+  instance_type   = "t2.medium"
+  iam_instance_profile = "${aws_iam_instance_profile.iProfile.name}"
+  # Auto scaling group
+  asg_name                  = "${var.environment}-${var.project}-${var.pbdmworkflow}-asg"
+  vpc_zone_identifier       = ["${var.subnet_ids}"]
+  security_groups           = ["${aws_security_group.allow_tls.id}"]
+  health_check_type         = "EC2"
+  min_size                  = 0
+  max_size                  = 1
+  desired_capacity          = 0
+  wait_for_capacity_timeout = 0
+  associate_public_ip_address	= true
+  key_name = "med-gold-federica"
+  tags = [
+    {
+      key                 = "Env"
+      value               = "${var.environment}"
+      propagate_at_launch = true
+    },
+    {
+      key                 = "App"
+      value               = "${var.pbdmworkflow}"
+      propagate_at_launch = true
+    },
+  ]
+}
+
+locals {
+  s3_id = "${aws_s3_bucket.bucket.id}"
+}
+resource "aws_ssm_parameter" "bucket_name" {
+  name            = "/${var.environment}/${var.pbdmworkflow}/bucket"
+  type            = "String"
+  overwrite       = "true"
+  value           = "${aws_s3_bucket.bucket.id}"
+}
+
+resource "aws_ssm_parameter" "region" {  
+  name            = "/${var.environment}/${var.pbdmworkflow}/region"
+  type            = "String"
+  overwrite       = "true"
+  value           = "${var.region}"
+}
+
+resource "aws_ssm_parameter" "queue_url" {
+  name            = "/${var.environment}/${var.pbdmworkflow}/queue_url"
+  type            = "String"
+  overwrite       = "true"
+  value           = "${module.pbdm-sqs.this_sqs_queue_id}" 
+}
+
+resource "aws_ssm_parameter" "request_table" {
+  name            = "/${var.environment}/${var.pbdmworkflow}/request_table"
+  type            = "String"
+  overwrite       = "true"
+  value           = "${module.Api-request.table_name}"
+}

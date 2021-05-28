@@ -1,0 +1,9 @@
+module "horta-sqs" {
+    source = "terraform-aws-modules/sqs/aws"
+    name = "${var.environment}-${var.project}-sfworkerqueue-${var.hortaworkflow}"
+}
+
+module "pbdm-sqs" {
+    source = "terraform-aws-modules/sqs/aws"
+    name = "${var.environment}-${var.project}-workerqueue-${var.pbdmworkflow}"
+}

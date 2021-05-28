@@ -1,0 +1,10 @@
+data "terraform_remote_state" "data-store" {
+  backend = "s3"
+
+  config {
+    # profile = "MSF"
+    bucket  = "${var.bucket}"
+    key     = "common/terraform.tfstate"
+    region  = "eu-west-1"
+  }
+}

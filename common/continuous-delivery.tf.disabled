@@ -1,0 +1,16 @@
+module "continuous-delivery" {
+  #source                = "git::ssh://git@bitbucket.org/beetobit/do-t-modules.git//continuous-delivery-block"
+  source = "git::ssh://git@bitbucket.org/beetobit/do-t-modules.git//cd-block"
+  codepipeline_role_arn = "${module.continuous-delivery_env.codepipeline_role_arn}"
+  codedeploy_role_arn   = "${module.continuous-delivery_env.codedeploy_role_arn}"
+  codedeploy_sns_arn    = "${module.continuous-delivery_env.codedeploy_sns_arn}"
+  asg_id                = "${module.asg.this_autoscaling_group_id}"
+  environment           = "${var.environment}"
+  project               = "${var.project}"
+  role                  = "${var.role}"
+  project_full_name     = "${var.project_full_name}"
+  filename              = "last-release.tar.gz"
+  # custom_s3_bucket = "${var.custom_s3_bucket}"
+  
+}
+
